@@ -4,6 +4,7 @@ console.debug = function(label, data) {
 	console.groupEnd();
 };
 var quantumjs = function(controllerPrototype, dataScope) {
+	var i;
 	var root 					= this;
 	this.dataScope				= dataScope;
 	
@@ -14,12 +15,36 @@ var quantumjs = function(controllerPrototype, dataScope) {
 	this.domLoops				= new Array();
 	this.domroot				= $('[data-scope="'+dataScope+'"]');
 	
+	this.monitorEvents(this.domroot);
 };
 quantumjs.prototype.loadQuantumObject = function(objectName, objectReference) {
 	this.controllerInstance[objectName].load(objectReference);
 };
 quantumjs.prototype.loadQuantumArray = function(objectName, objectReference) {
 	this.controllerInstance[objectName].load(objectReference);
+};
+quantumjs.prototype.monitorEvents = function(domRoot) {
+	var i;
+	var j;
+	var eventItems = domRoot.find("[data-event]").map(function() {
+		if ($(this).parents("[data-foreach]").length==0) {
+			return this;
+		}
+	});
+	for (i=0;i<eventItems.length;i++) {
+		var bindingEvents 		= this.toJSON($(eventItems[i]).attr("data-event"));
+		for (j in bindingEvents) {
+			if (this.controllerInstance[bindingEvents[j]] != undefined && typeof(this.controllerInstance[bindingEvents[j]]) == "function") {
+				this.attachEvent(eventItems[i], j, bindingEvents[j]);
+			}
+		}
+	}
+};
+quantumjs.prototype.attachEvent = function(domElement, eventType, eventFunction) {
+	var scope = this;
+	$(domElement).bind(eventType, function() {
+		scope.controllerInstance[eventFunction].apply(scope.controllerInstance)
+	});
 };
 quantumjs.prototype.monitor = function() {
 	var i;
@@ -30,7 +55,6 @@ quantumjs.prototype.monitor = function() {
 		}
 	});
 	for (i=0;i<foreachLoops.length;i++) {
-		//console.log(foreachLoops[i]);
 		// get loop var
 		var quantumVarName = $(foreachLoops[i]).attr("data-foreach");
 		// become the ancestor for this data, in order to receive the events
@@ -48,12 +72,14 @@ quantumjs.prototype.monitor = function() {
 };
 quantumjs.prototype.inform = function(message) {
 	
-	if (message.type == "push") {
+	/*if (message.type == "push") {
 		//console.group("******** PUSH ********");
 		//console.debug("push",message);
 		this.updateDOM(message);
 		//console.groupEnd();
-	}
+	}*/
+	this.updateDOM(message);
+	//console.debug("message",message);
 	return this;
 };
 quantumjs.prototype.updateDOM = function(message) {
@@ -75,17 +101,27 @@ quantumjs.prototype.updateDOM = function(message) {
 		
 		// check if we already built the dom node
 		var firstChildId	= message.path[message.path.length-2];
+		
 		// check if the loop item already exists in the DOM
 		if (this.dataValue !== false) {
 			if (this.domLoops[firstChildId] != undefined) {
 				// dom loop already exists
+				// Arbiter Events are taking care of updating the data
+				console.log(">>>>>>>>>>>>>>> DOM EXISTS");
 			} else {
 				// register the loop item
+				/*console.debug("parsedDOM", {
+					qArray:			dataInstance,
+					domTemplate:	this.templatesForeach[dataName],
+					dataPath:		message.path.slice(0,message.path.length-1)
+				});*/
 				var parsedDOM				= this.parseDom({
 					qArray:			dataInstance,
 					domTemplate:	this.templatesForeach[dataName],
 					dataPath:		message.path.slice(0,message.path.length-1)
 				});
+				//console.log("!parsedDOM passed", parsedDOM);
+				
 				this.domLoops[firstChildId] = parsedDOM;
 				this.templatesForeach[dataName].container.append(this.domLoops[firstChildId]);
 			}
@@ -99,7 +135,13 @@ quantumjs.prototype.parseDom = function(options) {
 	var dom 				= $(options.domTemplate.template);
 	//console.log("dom before",dom);
 	// find data-binding delarations
-	var databindingList 	= dom.find("[data-bind]");
+	var databindingList 	= dom.find("[data-bind]").map(function() {
+		// data-foreach should not appear in the parent dom, as the template is the data-foreach's child, and therefor should not appear int he dom
+		if ($(this).closest("[data-foreach]").length == 0) {
+			return this;
+		}
+	});
+	console.log("databindingList", databindingList);
 	for (i=0;i<databindingList.length;i++) {
 		var bindingObject 		= this.toJSON($(databindingList[i]).attr("data-bind"));
 		var bindingContainer	= databindingList[i];
@@ -114,7 +156,26 @@ quantumjs.prototype.parseDom = function(options) {
 	
 	return dom;
 };
+quantumjs.prototype.applyDataStringBinding = function(objectValue, propertyName, propertyValue, outputMethod, bindingContainer, skipSubscribe) {
+	var scope = this;
+	if (objectValue != undefined && objectValue != "") {
+		switch(outputMethod) {
+			case "html":
+			$(bindingContainer).html(propertyValue);
+			break;
+			case "value":
+			$(bindingContainer).val(propertyValue);
+			break;
+		}
+	}
+	if (skipSubscribe !== true) {
+		window.Arbiter.subscribe(objectValue[propertyName].strpath, function(data) {
+			scope.applyDataStringBinding(objectValue, propertyName, data.val, outputMethod, bindingContainer, true);
+		});
+	}
+};
 quantumjs.prototype.applyDataBinding = function(options) {
+	var scope = this;
 	var i;
 	var methods		= ["html","value"];
 	for (i=0;i<methods.length;i++) {
@@ -123,18 +184,12 @@ quantumjs.prototype.applyDataBinding = function(options) {
 				// get the value
 				var objectValue 	= this.parseDataPath(options.qArray, options.dataPath);
 				var propertyName 	= options.bindingObject[methods[i]];
-				//console.info(objectValue, propertyName);
 				if (objectValue != undefined && objectValue != "") {
 					var propertyValue	= objectValue[propertyName].data;
-					switch(methods[i]) {
-						case "html":
-						$(options.bindingContainer).html(propertyValue);
-						break;
-						case "value":
-						$(options.bindingContainer).val(propertyValue);
-						break;
-					}
+					this.applyDataStringBinding(objectValue, propertyName, propertyValue, methods[i], options.bindingContainer);
 				}
+				//**
+				
 				
 			} else {
 				// function call

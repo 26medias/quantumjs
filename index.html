@@ -40,14 +40,15 @@
 					<span data-bind="{'html':'name'}"></span>
 				</td>
 				<td>
-					<!--<ul data-foreach="list">
+					<ul data-foreach="list">
 						<li data-bind="{'html':'user'}"></li>
-					</ul>-->
+					</ul>
 				</td>
 			</tr>
 		</tbody>
 	</table>
-	<a href="javascript:void(0);" data-event="{'click':'create'}"></a>
+	<a href="javascript:void(0);" data-event="{'click':'create'}">create</a>
+	<a href="javascript:void(0);" data-event="{'click':'update'}">update</a>
 	
 	<script type="text/javascript">
 		var tasks = [
@@ -90,13 +91,25 @@
 			this.tasks 		= new quantumArray();
 		}
 		taskController.prototype.create = function() {
+			console.log(this.tasks);
+			this.counter++;
 			var task = {
-				id:			this.counter++,
+				id:			this.counter,
 				title:		"task #"+this.counter,
-				completed:	false
+				name:		"name #"+this.counter,
+				completed:	"yes",
+				list:	[
+					{user:"Elzar"},
+					{user:"Zoidberg"}
+				]
 			};
 			this.tasks.push(task);
 		}
+		taskController.prototype.update = function() {
+			console.debug("tasks",this.tasks);
+			this.tasks.data[5].data["name"].val("YEAH!");
+		}
+		
 		taskController.prototype.isCompleted = function(state) {
 			
 			return "["+state+"]";

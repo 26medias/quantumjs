@@ -51,3 +51,4 @@ Arbiter.prototype.request = function(type, callback) {
 	}
 	return this.offers[type].data;
 };
+window.Arbiter = new Arbiter();
