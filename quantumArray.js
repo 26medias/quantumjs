@@ -31,11 +31,13 @@ quantumArray.prototype.push = function(item) {
 			// we can only monitor arrays, objects and strings
 		break;
 	}
-	this.ancestor.inform({
-		type:		"push",
-		path: 		[this.data.length-1,this.identifier],
-		message:	item
-	});
+	if (this.ancestor != undefined) {
+		this.ancestor.inform({
+			type:		"push",
+			path: 		[this.data.length-1,this.identifier],
+			message:	item
+		});
+	}
 	return this;
 }
 quantumArray.prototype.setAncestor = function(ancestor) {

@@ -1,4 +1,8 @@
-
+console.debug = function(label, data) {
+	console.group(label);
+	console.dir(data);
+	console.groupEnd();
+};
 var quantumjs = function(controllerPrototype, dataScope) {
 	var root 					= this;
 	this.dataScope				= dataScope;
@@ -20,9 +24,13 @@ quantumjs.prototype.loadQuantumArray = function(objectName, objectReference) {
 quantumjs.prototype.monitor = function() {
 	var i;
 	// search for loops
-	var foreachLoops	= this.domroot.find("[data-foreach]");
-	
+	var foreachLoops	= this.domroot.find("[data-foreach]").map(function() {
+		if ($(this).parents("[data-foreach]").length==0) {
+			return this;
+		}
+	});
 	for (i=0;i<foreachLoops.length;i++) {
+		//console.log(foreachLoops[i]);
 		// get loop var
 		var quantumVarName = $(foreachLoops[i]).attr("data-foreach");
 		// become the ancestor for this data, in order to receive the events
@@ -41,10 +49,11 @@ quantumjs.prototype.monitor = function() {
 quantumjs.prototype.inform = function(message) {
 	
 	if (message.type == "push") {
-		//console.log(message);
+		//console.group("******** PUSH ********");
+		//console.debug("push",message);
 		this.updateDOM(message);
+		//console.groupEnd();
 	}
-	//this.updateDOM(message);
 	return this;
 };
 quantumjs.prototype.updateDOM = function(message) {
@@ -54,30 +63,37 @@ quantumjs.prototype.updateDOM = function(message) {
 	if (this.templatesForeach[dataName] != undefined) {
 		// get an instance of the quantumArray
 		var dataInstance = this.controllerInstance[dataName];
-		//console.log(dataInstance, message);
+		
+		// check if the highest object exists
+		var rootMap		= message.path.slice(message.path.length-2,message.path.length-1);
+		this.dataValue 	= this.parseDataPath(dataInstance,rootMap);
+		/*console.debug("datapath", {
+			dataInstance:this.cloneObject(dataInstance),
+			dataValue: 	this.cloneObject(this.dataValue),
+			map:		rootMap
+		});*/
+		
 		// check if we already built the dom node
 		var firstChildId	= message.path[message.path.length-2];
 		// check if the loop item already exists in the DOM
-		if (this.domLoops[firstChildId] != undefined) {
-			
-		} else {
-			// register the loop item
-			var parsedDOM				= this.parseDom({
-				qArray:			dataInstance,
-				domTemplate:	this.templatesForeach[dataName],
-				dataPath:		message.path.slice(0,message.path.length-1)
-			});
-			console.log("parsedDOM: ",parsedDOM, this.templatesForeach[dataName].container);
-			this.domLoops[firstChildId] = parsedDOM;
-			this.templatesForeach[dataName].container.append(this.domLoops[firstChildId]);
-			//this.domLoops[firstChildId] = this.parseDom(dataInstance, this.templatesForeach[dataName], message, message.path.slice(0,message.path.length-1));
-			//this.domLoops[firstChildId].container.append(this.domLoops[firstChildId].template);
+		if (this.dataValue !== false) {
+			if (this.domLoops[firstChildId] != undefined) {
+				// dom loop already exists
+			} else {
+				// register the loop item
+				var parsedDOM				= this.parseDom({
+					qArray:			dataInstance,
+					domTemplate:	this.templatesForeach[dataName],
+					dataPath:		message.path.slice(0,message.path.length-1)
+				});
+				this.domLoops[firstChildId] = parsedDOM;
+				this.templatesForeach[dataName].container.append(this.domLoops[firstChildId]);
+			}
 		}
 	}
 	return this;
 };
 quantumjs.prototype.parseDom = function(options) {
-	
 	
 	var i;
 	var dom 				= $(options.domTemplate.template);
@@ -107,14 +123,17 @@ quantumjs.prototype.applyDataBinding = function(options) {
 				// get the value
 				var objectValue 	= this.parseDataPath(options.qArray, options.dataPath);
 				var propertyName 	= options.bindingObject[methods[i]];
-				var propertyValue	= objectValue[propertyName].data;
-				switch(methods[i]) {
-					case "html":
-					$(options.bindingContainer).html(propertyValue);
-					break;
-					case "value":
-					$(options.bindingContainer).val(propertyValue);
-					break;
+				//console.info(objectValue, propertyName);
+				if (objectValue != undefined && objectValue != "") {
+					var propertyValue	= objectValue[propertyName].data;
+					switch(methods[i]) {
+						case "html":
+						$(options.bindingContainer).html(propertyValue);
+						break;
+						case "value":
+						$(options.bindingContainer).val(propertyValue);
+						break;
+					}
 				}
 				
 			} else {
@@ -123,7 +142,7 @@ quantumjs.prototype.applyDataBinding = function(options) {
 				var bindingData = options.bindingObject[methods[i]];
 				for (j in bindingData) {
 					if (this.controllerInstance[j] != undefined) {
-						console.log("calling '",j,"'");
+						//console.log("calling '",j,"'");
 						// create argument list
 						var args = new Array();
 						var k;
@@ -150,42 +169,23 @@ quantumjs.prototype.applyDataBinding = function(options) {
 	return $(options.bindingContainer);
 };
 
+quantumjs.prototype.cloneObject = function(obj) {
+	return $.extend({},{data:obj}).data;
+}
+
 quantumjs.prototype.parseDataPath = function(qObject, dataPath) {
 	var i;
 	var val = qObject;
 	for (i=dataPath.length-1;i>=0;i--) {
-		val = val.data[dataPath[i]];
+		if (val.data != undefined && val.data[dataPath[i]] != undefined) {
+			val = val.data[dataPath[i]];
+		} else {
+			return false;
+		}
 	}
 	return val.data;
 };
-quantumjs.prototype.parseDom2 = function(localScope, templateObject, message, path) {
-	var i;
-	var dom = $(templateObject.template);
-	//console.log(localScope, templateObject);
-	
-	// find data-binding delarations
-	var databindingList = dom.find("[data-bind]");
-	for (i=0;i<databindingList.length;i++) {
-		var bindingObject = this.toJSON($(databindingList[i]).attr("data-bind"));
-		this.applyDataBinding("html",bindingObject,dom,localScope,message,path);
-		
-	}
-	
-	return templateObject;
-};
-quantumjs.prototype.applyDataBinding2 = function(outputMethod, bindingObject, dom, localScope, message, path) {
-	if (bindingObject[outputMethod] != undefined) {
-		if (typeof(bindingObject[outputMethod]) == "string") {
-			// string
-			//console.log("binding string for ",outputMethod," on ",localScope);
-			//console.log(">>>> ", localScope.data[]);
-			//console.log(outputMethod, bindingObject, dom, localScope, message, path);
-			//console.info(localScope.data, path[path.length-1], bindingObject[outputMethod]);
-		} else {
-			
-		}
-	}
-};
+
 quantumjs.prototype.toJSON = function(str) {
 	str = this.replace("'","\"", str);
 	return JSON.parse(str);
