@@ -1,0 +1,86 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+<head>
+	<title>QuantumJS</title>
+	<meta charset="UTF-8">
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
+	<script type="text/javascript" src="json2.js"></script>
+	<script type="text/javascript" src="Arbiter.js"></script>
+	<script type="text/javascript" src="quantum.js"></script>
+	<script type="text/javascript" src="quantumArray.js"></script>
+	<script type="text/javascript" src="quantumObject.js"></script>
+	<script type="text/javascript" src="quantumString.js"></script>
+</head>
+<body data-scope="taskmanager">
+	<table border="1">
+		<thead>
+			<tr>
+				<th>[]</th>
+				<th>Title</th>
+				<th>Name</th>
+			</tr>
+		</thead>
+		<tbody data-foreach="tasks">
+			<tr>
+				<td>
+					<span data-bind="{'html':{'isCompleted':['completed']}}"></span>
+				</td>
+				<td>
+					<span data-bind="{'html':'title'}"></span>
+				</td>
+				<td>
+					<span data-bind="{'html':'name'}"></span>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<a href="javascript:void(0);" data-event="{'click':'create'}"></a>
+	
+	<script type="text/javascript">
+		var tasks = [
+			{
+				id:			1,
+				title:		"task #1",
+				name:		"name #1",
+				completed:	"yes"
+			},
+			{
+				id:			2,
+				title:		"task #2",
+				name:		"name #2",
+				completed:	"no"
+			},
+			{
+				id:			3,
+				title:		"task #3",
+				name:		"name #3",
+				completed:	"yes"
+			}
+		];
+		
+		var taskController = function() {
+			this.counter 	= 3;
+			this.tasks 		= new quantumArray();
+		}
+		taskController.prototype.create = function() {
+			var task = {
+				id:			this.counter++,
+				title:		"task #"+this.counter,
+				completed:	false
+			};
+			this.tasks.push(task);
+		}
+		taskController.prototype.isCompleted = function(state) {
+			
+			return "["+state+"]";
+		}
+		
+		$(function() {
+			var quantumInterface = new quantumjs(taskController, "taskmanager");
+			quantumInterface.monitor();
+			quantumInterface.loadQuantumArray('tasks', tasks);
+		});
+		
+	</script>
+</body>
+</html>
