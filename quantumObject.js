@@ -1,6 +1,14 @@
-var quantumObject = function(ancestor, identifier) {
-	this.ancestor 	= ancestor;
-	this.identifier = identifier;
+var quantumObject = function(dataPath, controllerInstance) {
+	
+	if (dataPath == undefined) {
+		this.dataPath		= [];
+	} else {
+		this.dataPath = dataPath
+	}
+	if (controllerInstance != undefined) {
+		this.dataPath.unshift(controllerInstance.quantumjs.dataScope);
+	}
+	
 	this.data 		= new Object();
 	return this;
 }
@@ -11,13 +19,16 @@ quantumObject.prototype.load = function(objectReference) {
 		switch (typeof(item)) {
 			case "object":
 				if (item instanceof Array) {
-					this.data[i] = new quantumArray(this, i).load(item);
+					this.set(i, new quantumArray(this.extendDataPath(i)).load(item));
+					//this.data[i] = new quantumArray(this.extendDataPath(i)).load(item);
 				} else {
-					this.data[i] = new quantumObject(this, i).load(item);
+					this.set(i, new quantumObject(this.extendDataPath(i)).load(item));
+					//this.data[i] = new quantumObject(this.extendDataPath(i)).load(item);
 				}
 			break;
 			case "string":
-				this.data[i] = new quantumString(this, i).val(item)
+				this.set(i, new quantumString(this.extendDataPath(i)).val(item));
+				//this.data[i] = new quantumString(this.extendDataPath(i)).val(item);
 			break;
 			default:
 				// we can only monitor arrays, objects and strings
@@ -26,22 +37,19 @@ quantumObject.prototype.load = function(objectReference) {
 	}
 	return this;
 }
-quantumArray.prototype.setAncestor = function(ancestor) {
-	this.ancestor 	= ancestor;
+quantumObject.prototype.set = function(prop, item) {
+	this.data[prop] = item;
+	window.Arbiter.inform(this.dataPath.join("."), {
+		val:	item
+	});
+	window.Arbiter.inform(this.dataPath.slice(0,2).join("."), {
+		action:		"update",
+		dataPath:	this.dataPath
+	});
 	return this;
 }
-quantumArray.prototype.setIdentifier = function(identifier) {
-	this.identifier 	= identifier;
-	return this;
-}
-quantumObject.prototype.inform = function(message) {
-	if (this.ancestor) {
-		if (this.identifier != undefined) {
-			message.path.push(this.identifier);
-		}
-		this.ancestor.inform(message);
-	} else {
-		// no ancestor. This object is not monitored
-	}
-	return this;
+quantumObject.prototype.extendDataPath = function(item) {
+	var clone = this.dataPath.slice();
+	clone.push(item);
+	return clone;
 }

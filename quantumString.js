@@ -1,38 +1,34 @@
-var quantumString = function(ancestor, identifier) {
-	this.ancestor 	= ancestor;
-	this.identifier = identifier;
+var quantumString = function(dataPath, controllerInstance) {
+	
+	if (dataPath == undefined) {
+		this.dataPath		= [];
+	} else {
+		this.dataPath = dataPath;
+	}
+	if (controllerInstance != undefined) {
+		this.dataPath.unshift(controllerInstance.quantumjs.dataScope);
+	}
+	
 	this.data 		= "";
-	this.strpath	= this.findStrPath(this.ancestor);
-	//console.info(this.strpath);
 	return this;
 }
 quantumString.prototype.val = function(item) {
 	if (item) {
 		this.data = item;
-		if (this.ancestor) {
-			this.ancestor.inform({
-				type:		"update",
-				path: 		[this.identifier],
-				message:	item
-			});
-		}
-		console.log("informing",this.strpath);
-		window.Arbiter.inform(this.strpath, {
+		window.Arbiter.inform(this.dataPath.join("."), {
 			val:	item
+		});
+		window.Arbiter.inform(this.dataPath.slice(0,2).join("."), {
+			action:		"update",
+			dataPath:	this.dataPath
 		});
 		return this;
 	} else {
 		return this.data;
 	}
 }
-quantumString.prototype.findStrPath = function(ancestor,str) {
-	if (str == undefined) {
-		str = this.identifier;
-	}
-	if (ancestor.identifier != undefined) {
-		str = ancestor.identifier+"."+str;
-		return this.findStrPath(ancestor.ancestor, str);
-	} else {
-		return str;
-	}
+quantumString.prototype.extendDataPath = function(item) {
+	var clone = this.dataPath.slice();
+	clone.push(item);
+	return clone;
 }

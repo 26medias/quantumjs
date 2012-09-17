@@ -3,7 +3,7 @@
 <head>
 	<title>QuantumJS</title>
 	<meta charset="UTF-8">
-	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
+	<script type="text/javascript" src="jquery.min.js"></script>
 	<script type="text/javascript" src="json2.js"></script>
 	<script type="text/javascript" src="Arbiter.js"></script>
 	<script type="text/javascript" src="quantum.js"></script>
@@ -26,10 +26,11 @@
 				<th>Title</th>
 				<th>Name</th>
 				<th>List</th>
+				<th>Tel</th>
 			</tr>
 		</thead>
 		<tbody data-foreach="tasks">
-			<tr>
+			<tr data-bind="{'attr':{'data-id':'name'}}">
 				<td>
 					<span data-bind="{'html':{'isCompleted':['completed']}}"></span>
 				</td>
@@ -41,7 +42,19 @@
 				</td>
 				<td>
 					<ul data-foreach="list">
-						<li data-bind="{'html':'user'}"></li>
+						<li>
+							<span data-bind="{'html':'user'}"></span>
+							<ul data-foreach="img">
+								<li><img data-bind="{'attr':{'src':'url'}}" style="width: 60px;" src="" alt="" /></li>
+							</ul>
+						</li>
+					</ul>
+				</td>
+				<td>
+					<ul data-foreach="tel">
+						<li>
+							<span data-bind="{'html':'num'}"></span>
+						</li>
 					</ul>
 				</td>
 			</tr>
@@ -51,6 +64,18 @@
 	<a href="javascript:void(0);" data-event="{'click':'update'}">update</a>
 	
 	<script type="text/javascript">
+		console.debug = function(label, data) {
+			console.group(label);
+			if (data instanceof Array) {
+				console.dir(data);
+			} else {
+				for (var i in data) {
+					console.log(i,data[i]);
+				}
+			}
+			console.groupEnd();
+		};
+
 		var tasks = [
 			{
 				id:			1,
@@ -58,9 +83,14 @@
 				name:		"name #1",
 				completed:	"yes",
 				list:	[
-					{user:"Bill"},
-					{user:"Erik"},
-					{user:"Sookie"}
+					{user:"Bill", img:[{url:"images/George Takei's head.png"},{url:"images/Lucy Liu's Head.png"}]},
+					{user:"Erik", img:[{url:"images/Al Gores Head.png"},{url:"images/Richard Nixon's Head.png"}]},
+					{user:"Sookie", img:[{url:"images/Pamela Anderson.png"}]}
+				],
+				tel:	[
+					{num:"123445"},
+					{num:"azerty"},
+					{num:"7896"}
 				]
 			},
 			{
@@ -69,8 +99,12 @@
 				name:		"name #2",
 				completed:	"no",
 				list:	[
-					{user:"Jason"},
-					{user:"Hoit"}
+					{user:"Jason", img:[{url:"images/David Cohens Head.png"},{url:"images/David Duchovnys Head.png"}]},
+					{user:"Hoit", img:[]}
+				],
+				tel:	[
+					{num:"azertyfgdfdf"},
+					{num:"0801653521"},
 				]
 			},
 			{
@@ -79,17 +113,26 @@
 				name:		"name #3",
 				completed:	"yes",
 				list:	[
-					{user:"Bender"},
-					{user:"Fry"},
-					{user:"Leela"}
+					{user:"Bender", img:[]},
+					{user:"Fry", img:[{url:"images/George Takei's head.png"},{url:"images/Lucy Liu's Head.png"}]},
+					{user:"Leela", img:[]}
+				],
+				tel:	[
+					{num:"7896fdfds"}
 				]
 			}
 		];
 		
-		var taskController = function() {
+		var taskController = function(quantumjs) {
+			this.quantumjs 	= quantumjs;
 			this.counter 	= 3;
-			this.tasks 		= new quantumArray();
+			this.tasks 		= new quantumArray(["tasks"], this)
 		}
+		taskController.prototype.init = function() {
+			this.tasks.load(tasks);
+			console.log("tasks", this.tasks);
+		};
+		
 		taskController.prototype.create = function() {
 			console.log(this.tasks);
 			this.counter++;
@@ -101,12 +144,15 @@
 				list:	[
 					{user:"Elzar"},
 					{user:"Zoidberg"}
+				],
+				tel:	[
+					{num:"7896fdfds"}
 				]
 			};
 			this.tasks.push(task);
 		}
 		taskController.prototype.update = function() {
-			console.debug("tasks",this.tasks);
+			console.log("tasks",this.tasks);
 			this.tasks.data[5].data["name"].val("YEAH!");
 		}
 		
@@ -117,8 +163,8 @@
 		
 		$(function() {
 			var quantumInterface = new quantumjs(taskController, "taskmanager");
-			quantumInterface.monitor();
-			quantumInterface.loadQuantumArray('tasks', tasks);
+			//quantumInterface.loadQuantumArray('tasks', tasks);
+			
 		});
 		
 	</script>
