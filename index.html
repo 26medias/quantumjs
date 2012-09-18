@@ -19,6 +19,12 @@
 	</style>
 </head>
 <body data-scope="taskmanager">
+	
+	<a href="javascript:void(0);" data-event="{'click':'create'}">create</a>
+	<a href="javascript:void(0);" data-event="{'click':'update'}">update name</a>
+	<a href="javascript:void(0);" data-event="{'click':'update_image'}">update image</a>
+	<a href="javascript:void(0);" data-event="{'click':'update_completed'}">update completed</a>
+	
 	<table border="1">
 		<thead>
 			<tr>
@@ -60,8 +66,6 @@
 			</tr>
 		</tbody>
 	</table>
-	<a href="javascript:void(0);" data-event="{'click':'create'}">create</a>
-	<a href="javascript:void(0);" data-event="{'click':'update'}">update</a>
 	
 	<script type="text/javascript">
 		console.debug = function(label, data) {
@@ -142,7 +146,7 @@
 				name:		"name #"+this.counter,
 				completed:	"yes",
 				list:	[
-					{user:"Elzar"},
+					{user:"Elzar", img: [{url:"images/Matt Groening.png"}]},
 					{user:"Zoidberg"}
 				],
 				tel:	[
@@ -153,7 +157,15 @@
 		}
 		taskController.prototype.update = function() {
 			console.log("tasks",this.tasks);
-			this.tasks.data[5].data["name"].val("YEAH!");
+			this.tasks.data[1].data["name"].val("YEAH!");
+		}
+		taskController.prototype.update_completed = function() {
+			console.log("tasks",this.tasks);
+			this.tasks.data[1].data["completed"].val("maybe");
+		}
+		taskController.prototype.update_image = function() {
+			console.log("tasks",this.tasks);
+			this.tasks.data[1].data["list"].data[0].data["img"].data[0].data["url"].val("images/Dennis Rodman.png");
 		}
 		
 		taskController.prototype.isCompleted = function(state) {
