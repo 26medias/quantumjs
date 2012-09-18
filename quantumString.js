@@ -15,7 +15,7 @@ var quantumString = function(dataPath, controllerInstance) {
 quantumString.prototype.val = function(item) {
 	if (item) {
 		this.data = item;
-		console.log("informing:",this.dataPath.join("."));
+		console.log(" >> informing:",this.dataPath.join("."),this.dataPath);
 		window.Arbiter.inform(this.dataPath.join("."), {
 			action:		"val",
 			val:		item

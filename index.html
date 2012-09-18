@@ -33,18 +33,19 @@
 				<th>Name</th>
 				<th>List</th>
 				<th>Tel</th>
+				<th>Options</th>
 			</tr>
 		</thead>
 		<tbody data-foreach="tasks">
-			<tr data-bind="{'attr':{'data-id':'name'}}">
+			<tr data-bind="{'attr':{'data-id':'name','data-test':'name'}}">
 				<td>
-					<span data-bind="{'html':{'isCompleted':['completed']}}"></span>
+					<span data-bind="{'html':{'isCompleted':['completed','name']}}"></span>
 				</td>
 				<td>
 					<span data-bind="{'html':'title'}"></span>
 				</td>
 				<td>
-					<span data-bind="{'html':'name'}"></span>
+					<input type="text" data-bind="{'val':'name','attr':{'title':'title','name':'name'}}" />
 				</td>
 				<td>
 					<ul data-foreach="list">
@@ -62,6 +63,9 @@
 							<span data-bind="{'html':'num'}"></span>
 						</li>
 					</ul>
+				</td>
+				<td>
+					<a href="javascript:void(0);" data-event="{'click':'updateline'}">edit</a>
 				</td>
 			</tr>
 		</tbody>
@@ -156,21 +160,22 @@
 			this.tasks.push(task);
 		}
 		taskController.prototype.update = function() {
-			console.log("tasks",this.tasks);
 			this.tasks.data[1].data["name"].val("YEAH!");
 		}
+		taskController.prototype.updateline = function(data) {
+			console.info("updateline",data);
+		}
 		taskController.prototype.update_completed = function() {
-			console.log("tasks",this.tasks);
+			console.log("update_completed");
 			this.tasks.data[1].data["completed"].val("maybe");
 		}
 		taskController.prototype.update_image = function() {
-			console.log("tasks",this.tasks);
 			this.tasks.data[1].data["list"].data[0].data["img"].data[0].data["url"].val("images/Dennis Rodman.png");
 		}
 		
-		taskController.prototype.isCompleted = function(state) {
-			
-			return "["+state+"]";
+		taskController.prototype.isCompleted = function(state, name) {
+			console.log("*** isCompleted ***");
+			return "["+state+"||"+name+"]";
 		}
 		
 		$(function() {
