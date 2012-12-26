@@ -45,7 +45,7 @@
 					<span data-bind="{'html':'title'}"></span>
 				</td>
 				<td>
-					<input type="text" data-bind="{'val':'name','attr':{'title':'title','name':'name'}}" />
+					<input type="text" data-bind="{'val':'name','attr':{'title':'title','name':'name'}}" data-event="{'change':'nameChange'}" />
 				</td>
 				<td>
 					<ul data-foreach="list">
@@ -54,8 +54,10 @@
 							<ul data-foreach="img">
 								<li><img data-bind="{'attr':{'src':'url'}}" style="width: 60px;" src="" alt="" /></li>
 							</ul>
+							<a href="javascript:void(0);" data-event="{'click':'addImage'}">[+]</a>
 						</li>
 					</ul>
+					<a href="javascript:void(0);" data-event="{'click':'addUser'}">[+]</a>
 				</td>
 				<td>
 					<ul data-foreach="tel">
@@ -63,6 +65,7 @@
 							<span data-bind="{'html':'num'}"></span>
 						</li>
 					</ul>
+					<a href="javascript:void(0);" data-event="{'click':'addPhone'}">[+]</a>
 				</td>
 				<td>
 					<a href="javascript:void(0);" data-event="{'click':'updateline'}">edit</a>
@@ -138,11 +141,9 @@
 		}
 		taskController.prototype.init = function() {
 			this.tasks.load(tasks);
-			console.log("tasks", this.tasks);
 		};
 		
 		taskController.prototype.create = function() {
-			console.log(this.tasks);
 			this.counter++;
 			var task = {
 				id:			this.counter,
@@ -151,7 +152,7 @@
 				completed:	"yes",
 				list:	[
 					{user:"Elzar", img: [{url:"images/Matt Groening.png"}]},
-					{user:"Zoidberg"}
+					{user:"Zoidberg", img: [{url:"images/Matt Groening.png"}]}
 				],
 				tel:	[
 					{num:"7896fdfds"}
@@ -163,10 +164,22 @@
 			this.tasks.data[1].data["name"].val("YEAH!");
 		}
 		taskController.prototype.updateline = function(data) {
-			console.info("updateline",data);
+			this.set(data.dataPath+".name","hello world");
+		}
+		taskController.prototype.nameChange = function(data) {
+			this.set(data.dataPath+".name",data.el.val());
+		}
+		taskController.prototype.addPhone = function(data) {
+			this.getRef(data.dataPath+".tel").push({num:"123 456 789"});
+		}
+		taskController.prototype.addImage = function(data) {
+			console.log("addImage", data);
+			this.getRef(data.dataPath+".img").push({url:"images/George Takei's head.png"});
+		}
+		taskController.prototype.addUser = function(data) {
+			this.getRef(data.dataPath+".list").push({user:"Lex Luthor", img:[{url:"images/George Takei's head.png"}]});
 		}
 		taskController.prototype.update_completed = function() {
-			console.log("update_completed");
 			this.tasks.data[1].data["completed"].val("maybe");
 		}
 		taskController.prototype.update_image = function() {
@@ -174,7 +187,6 @@
 		}
 		
 		taskController.prototype.isCompleted = function(state, name) {
-			console.log("*** isCompleted ***");
 			return "["+state+"||"+name+"]";
 		}
 		

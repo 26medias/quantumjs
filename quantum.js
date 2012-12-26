@@ -15,7 +15,7 @@
 
 var quantumjs = function(controllerPrototype, dataScope) {
 	var i;
-	var root 					= this;
+	var scope 					= this;
 	this.dataScope				= dataScope;
 	
 	this.templatesForeach		= new Object();
@@ -24,12 +24,20 @@ var quantumjs = function(controllerPrototype, dataScope) {
 	
 	this.domTOC					= new Object();
 	
+	this.listened				= new Array();	// list of listned nodes. Avoid listening to the same element's events twice or more.
+	
 	// create the template list, analyze and cache the loops
 	this.initTemplate(this.domroot);
 	
 	
 	// init the controller
 	this.controllerPrototype 	= controllerPrototype;
+	this.controllerPrototype.prototype.set = function(dataPath, value) {
+		return scope.set(dataPath, value);
+	};
+	this.controllerPrototype.prototype.getRef = function(dataPath) {
+		return scope.getRef(dataPath);
+	};
 	this.controllerInstance 	= new this.controllerPrototype(this);
 	
 	
@@ -43,37 +51,69 @@ var quantumjs = function(controllerPrototype, dataScope) {
 * EVENTS
 */
 
+
+quantumjs.prototype.contains = function(needle, haystack) {
+	var found = false;
+	var i;
+	var l = haystack.length;
+	for (i=0;i<l;i++) {
+		if ($(haystack[i]).is(needle)) {
+			found = true;
+		}
+	}
+	return found;
+};
+
 /*
 * Monitor events in a given DOM node
 */
-quantumjs.prototype.monitorEvents = function(domRoot) {
-	console.group("monitorEvents");
-	console.log("domRoot",domRoot);
+quantumjs.prototype.monitorEvents = function(domRoot, options) {
+	//console.group("monitorEvents");
+	//console.log("domRoot",domRoot);
+	//console.info("options",options);
+	//console.info("isSubLoop",isSubLoop);
+	var scope = this;
 	var i;
 	var j;
 	var eventItems = domRoot.find("[data-event]").map(function() {
-		if ($(this).parents("[data-foreach]").length==0) {
-			return this;
+		//console.log("parents()",$(this)," || ",$(this).parents("[data-foreach]"));
+		if ($(this).parents("[data-foreach]").length <= 2) {
+			if (!scope.contains(this, scope.listened)) {
+				scope.listened.push(this);
+				return this;
+			}
 		}
 	});
+	//console.log("eventItems",eventItems);
+	//console.log("eventItems",eventItems);
 	for (i=0;i<eventItems.length;i++) {
 		var bindingEvents 		= this.toJSON($(eventItems[i]).attr("data-event"));
+		//console.log("bindingEvents",bindingEvents, $(eventItems[i]));
 		for (j in bindingEvents) {
 			if (this.controllerInstance[bindingEvents[j]] != undefined && typeof(this.controllerInstance[bindingEvents[j]]) == "function") {
-				this.attachEvent(eventItems[i], j, bindingEvents[j]);
+				this.attachEvent(eventItems[i], j, bindingEvents[j], options!=undefined?options.domNodeId:undefined);
 			}
 		}
 	}
-	console.groupEnd();
+	//console.groupEnd();
 };
 /*
 * Attach an event
 */
-quantumjs.prototype.attachEvent = function(domElement, eventType, eventFunction) {
+quantumjs.prototype.attachEvent = function(domElement, eventType, eventFunction, eventArgs) {
+	//console.group("attachEvent");
+	//console.log(domElement, eventType, eventFunction, eventArgs);
 	var scope = this;
+	var eventArgsObject;
+	// convert eventArgs to data if !undefined
+	if (eventArgs != undefined) {
+		eventArgsObject = this.getDataFromPath(eventArgs.split("."));
+	}
 	$(domElement).bind(eventType, function() {
-		scope.controllerInstance[eventFunction].apply(scope.controllerInstance)
+		scope.controllerInstance[eventFunction].apply(scope.controllerInstance, [{el: $(domElement), dataPath: eventArgs, data:eventArgsObject}])
 	});
+	//console.log($(domElement), eventArgs, eventArgsObject);
+	//console.groupEnd();
 };
 
 /*
@@ -124,6 +164,7 @@ quantumjs.prototype.initTemplate = function(domroot,dataPath) {
 		// subscribe to events
 		//console.log("subscribe:",this.dataScope+"."+quantumVarName);
 		window.Arbiter.subscribe(this.dataScope+"."+quantumVarName, function(data) {
+			//console.log("Arbiter",data);
 			switch (data.action) {
 				case "update":
 					scope.onDataUpdate(data);
@@ -177,7 +218,13 @@ quantumjs.prototype.onDataUpdate = function(data) {
 				if (this.domTOC[domNodeId] == undefined) {
 					
 					// create the dom node
-					//console.log("(create DOM node)", domNodeId);
+					/*console.log("(create DOM node)", domNodeId,{
+						domRoot:	data.domRoot!=undefined?data.domRoot:undefined,
+						domNodeId:	domNodeId,
+						domStrPath:	domStrPath,
+						domTpl:		domTpl,
+						domData:	domData
+					});*/
 					this.applyTemplate({
 						domRoot:	data.domRoot!=undefined?data.domRoot:undefined,
 						domNodeId:	domNodeId,
@@ -187,7 +234,7 @@ quantumjs.prototype.onDataUpdate = function(data) {
 					});
 				} else {
 					// update the dom node
-					console.log("(update DOM node)", domNodeId);
+					//console.log("(update DOM node)", domNodeId, this.domTOC[domNodeId]);
 				}
 				
 			}
@@ -205,10 +252,23 @@ quantumjs.prototype.applyTemplate = function(options) {
 	//console.debug("applyTemplate", options);
 	//** /!\ ** find the domroot for nested loops 
 	//var domRoot = this.findDomRoot(options.domStrPath, options.domNodeId);
+	var domRoot 		= false;
+	var domRootUpdate 	= false;
 	if (options.domRoot == undefined) {
-		var domRoot = this.domroot.find('[data-foreach="'+options.domStrPath+'"]');
+		domRoot = this.domroot.find('[data-foreach="'+options.domStrPath+'"]');
 	} else {
-		var domRoot = options.domRoot;
+		domRoot = options.domRoot;
+	}
+	
+	//console.log("---domRoot",domRoot);
+	if(options.domRoot == undefined) {
+		//console.info("DomRoot is: ",this.domTOC, options.domNodeId);
+		var domRootId;
+		domRootId		= options.domNodeId.split(".");
+		domRootId		= domRootId.slice(0, domRootId.length-1);
+		domRootId		= domRootId.join(".");
+		//console.log(">>>",domRootId, this.domTOC[domRootId]);
+		domRootUpdate 	= this.domTOC[domRootId];
 	}
 	//console.log("domRoot ::", domRoot);
 	if (this.domTOC[options.domNodeId] == undefined) {
@@ -223,9 +283,54 @@ quantumjs.prototype.applyTemplate = function(options) {
 			domNodeId:	options.domNodeId
 		});
 		//console.info("****** domNode",domNode);
-		domRoot.append(domNode);
+		// register the domRoot (to insert more data later if needed)
+		var domNodeIdArray 		= options.domNodeId.split(".");
+		var domRootId			= domNodeIdArray.slice(0,domNodeIdArray.length-1).join(".");
+		if (domRoot.length > 0) {
+			this.domTOC[domRootId] 	= domRoot;
+		}
+		//console.log("######### domRoot", this.domTOC, domRoot, options.domNodeId, domNodeIdArray, domRootId);
 		
-		//this.monitorEvents(domNode);
+		//console.log(">>>> domRoot(",domRoot,")");
+		
+		// check if we can find dynamicaly the domRoot
+		if (this.domTOC[domRootId] == undefined) {
+			// go back one level
+			var previousLevel 	= domRootId.split(".");
+			var lastLevel		= previousLevel.slice(previousLevel.length-1)[0];
+			previousLevel		= previousLevel.slice(0,previousLevel.length-1);
+			previousLevel		= previousLevel.join(".");
+			//console.log("##### lastLevel",lastLevel);
+			//console.log("##### previousLevel",previousLevel);
+			//console.log("##### this.domTOC[previousLevel]",this.domTOC[previousLevel]);
+			//console.log("##### this.domTOC[previousLevel]",$(this.domTOC[previousLevel]).find('[data-foreach="'+lastLevel+'"]'));
+			//console.log("######## this.domTOC[domRootId]",domRootId);
+			this.domTOC[domRootId] 	= $(this.domTOC[previousLevel]).find('[data-foreach="'+lastLevel+'"]');
+			domRoot					= this.domTOC[domRootId];
+			//domRoot					= $(this.domTOC[previousLevel]).find('[data-foreach="'+lastLevel+'"]');
+			//this.domTOC[domRoot]	= domRoot;
+			//domRoot = this.domTOC[previousLevel];
+			//console.log("## previousLevel",previousLevel,this.domTOC[previousLevel].find('[data-foreach="'+lastLevel+'"]'));
+		}
+		
+		
+		
+		if (domRoot != false && domRoot.length > 0) {
+			//console.log("UPDATE(domRoot)!!!", domRoot, domNode);
+			domRoot.append(domNode);
+		} else {
+			if (domRootUpdate != false) {
+				//console.log("UPDATE(domRootUpdate)!!!", domRootUpdate, domNode);
+				domRootUpdate.append(domNode);
+			}
+		}
+		
+		this.monitorEvents(domNode, {
+			domNodeId:	options.domNodeId
+		});
+		/*this.monitorEvents(domNode, {
+			domNodeId:	this.getParentPath(options.domNodeId)
+		});*/
 		
 		this.domTOC[options.domNodeId] = domNode;
 	} else {
@@ -234,6 +339,12 @@ quantumjs.prototype.applyTemplate = function(options) {
 	}
 	//console.groupEnd();
 }
+quantumjs.prototype.getParentPath = function(datapath) {
+	var pathArray 		= datapath.split(".");
+	var parentPath		= pathArray.slice(0,pathArray.length-1);
+	parentPath			= parentPath.join(".");
+	return parentPath;
+};
 quantumjs.prototype.dataBind = function(options) {
 	var i;
 	var j;
@@ -404,7 +515,7 @@ quantumjs.prototype.getComputedValue = function(options) {
 };
 
 quantumjs.prototype.getDataFromPath = function(dataPath) {
-	var i;
+	var i;	
 	var val = this.controllerInstance[dataPath[1]];
 	for (i=2;i<dataPath.length;i++) {
 		if (val.data != undefined && val.data[dataPath[i]] != undefined) {
@@ -430,6 +541,33 @@ quantumjs.prototype.dataPathToDomPath = function(dataPath) {
 quantumjs.prototype.toJSON = function(str) {
 	str = this.replace("'","\"", str);
 	return JSON.parse(str);
+};
+quantumjs.prototype.set = function(dataPath, value) {
+	var i;
+	var dataPathArray = dataPath.slice().split(".");
+	var val = this.controllerInstance[dataPathArray[1]];
+	for (i=2;i<dataPathArray.length;i++) {
+		if (val.data != undefined && val.data[dataPathArray[i]] != undefined) {
+			val = val.data[dataPathArray[i]];
+		} else {
+			return false;
+		}
+	}
+	val.val(value);
+	return val;
+};
+quantumjs.prototype.getRef = function(dataPath) {
+	var i;
+	var dataPathArray = dataPath.slice().split(".");
+	var val = this.controllerInstance[dataPathArray[1]];
+	for (i=2;i<dataPathArray.length;i++) {
+		if (val.data != undefined && val.data[dataPathArray[i]] != undefined) {
+			val = val.data[dataPathArray[i]];
+		} else {
+			return false;
+		}
+	}
+	return val;
 };
 quantumjs.prototype.replace = function(_search, _replace, _subject) {
 	return _subject.replace(new RegExp(_search, 'g'),_replace);
