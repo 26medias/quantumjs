@@ -24,7 +24,10 @@ var quantumjs = function(controllerPrototype, dataScope) {
 	
 	this.domTOC					= new Object();
 	
-	this.listened				= new Array();	// list of listned nodes. Avoid listening to the same element's events twice or more.
+	this.listened				= new Array();	// list of nested nodes. Avoid listening to the same element's events twice or more.
+	this.binded					= new Array();	// list of binded nodes. Avoid binding the same element twice or more.
+	
+	
 	
 	// create the template list, analyze and cache the loops
 	this.initTemplate(this.domroot);
@@ -41,10 +44,26 @@ var quantumjs = function(controllerPrototype, dataScope) {
 	this.controllerInstance 	= new this.controllerPrototype(this);
 	
 	
+	this.controllerInstance.init();
+	
+	//console.log("-------------------");
 	// monitor events
 	this.monitorEvents(this.domroot);
 	
-	this.controllerInstance.init();
+	// bind lone elements
+	// find elements
+	//console.log("scope.binded",scope.binded);
+
+	var bindable = this.domroot.find("[data-bind]");
+	for (i=0;i<bindable.length;i++) {
+		if (!scope.contains(bindable[i], scope.binded)) {
+			//console.log("bindable[i]",bindable[i]);
+			scope.prepareDataBinding(bindable[i], {});
+			/*scope.applyDataBinding({
+				binding:	"val"
+			});*/
+		}
+	}
 	
 };
 /*
@@ -75,14 +94,15 @@ quantumjs.prototype.monitorEvents = function(domRoot, options) {
 	var scope = this;
 	var i;
 	var j;
+	
 	var eventItems = domRoot.find("[data-event]").map(function() {
 		//console.log("parents()",$(this)," || ",$(this).parents("[data-foreach]"));
-		if ($(this).parents("[data-foreach]").length <= 2) {
+		//if ($(this).parents("[data-foreach]").length <= 2) {
 			if (!scope.contains(this, scope.listened)) {
 				scope.listened.push(this);
 				return this;
 			}
-		}
+		//}
 	});
 	//console.log("eventItems",eventItems);
 	//console.log("eventItems",eventItems);
@@ -90,9 +110,10 @@ quantumjs.prototype.monitorEvents = function(domRoot, options) {
 		var bindingEvents 		= this.toJSON($(eventItems[i]).attr("data-event"));
 		//console.log("bindingEvents",bindingEvents, $(eventItems[i]));
 		for (j in bindingEvents) {
-			if (this.controllerInstance[bindingEvents[j]] != undefined && typeof(this.controllerInstance[bindingEvents[j]]) == "function") {
+			//console.log("bindingEvents",bindingEvents[j]);
+			//if (this.controllerInstance[bindingEvents[j]] != undefined && typeof(this.controllerInstance[bindingEvents[j]]) == "function") {
 				this.attachEvent(eventItems[i], j, bindingEvents[j], options!=undefined?options.domNodeId:undefined);
-			}
+			//}
 		}
 	}
 	//console.groupEnd();
@@ -105,11 +126,21 @@ quantumjs.prototype.attachEvent = function(domElement, eventType, eventFunction,
 	//console.log(domElement, eventType, eventFunction, eventArgs);
 	var scope = this;
 	var eventArgsObject;
+	if (!eventArgs) {
+		eventArgs = this.dataScope;
+	}
+	//console.log("eventArgs",eventArgs);
 	// convert eventArgs to data if !undefined
 	if (eventArgs != undefined) {
 		eventArgsObject = this.getDataFromPath(eventArgs.split("."));
 	}
+	/*
+	options = $.extend(options, {
+		dataPath:	this.dataScope,
+		data:		this.controllerInstance
+	});*/
 	$(domElement).bind(eventType, function() {
+		//console.log("[event]",this);
 		scope.controllerInstance[eventFunction].apply(scope.controllerInstance, [{el: $(domElement), dataPath: eventArgs, data:eventArgsObject}])
 	});
 	//console.log($(domElement), eventArgs, eventArgsObject);
@@ -349,7 +380,9 @@ quantumjs.prototype.dataBind = function(options) {
 	var i;
 	var j;
 	var k;
+	var scope = this;
 	var domNode = options.domNode;
+	
 	//console.group("*** dataBind() ***");
 	//console.debug("options", options);
 	
@@ -361,70 +394,11 @@ quantumjs.prototype.dataBind = function(options) {
 	}
 	for (i=0;i<bindingContainers.length;i++) {
 		//console.log($(bindingContainers[i]).attr("data-bind"),this.toJSON($(bindingContainers[i]).attr("data-bind")));
-		var conf = this.toJSON($(bindingContainers[i]).attr("data-bind"));
-		//console.info("conf",conf);
-		// 1. compute the value
-		// 2. check which method to apply
 		
-		for (j in conf) {
-			var computedValue = "";
-			if (conf[j] instanceof Object) {
-				for (k in conf[j]) {
-					if (conf[j][k] instanceof Array) {
-						if (this.controllerInstance[k] instanceof Function) {
-							// valid function call
-							var args = new Array();
-							for (l=0;l<conf[j][k].length;l++) {
-								args.push(options.domData[conf[j][k][l]].data);
-							}
-							computedValue = this.controllerInstance[k].apply(this, args);
-							// generate event ids based on the arguments
-							// since it's a function, we need to reload if any of the argument changes
-							var eventIds = new Array();
-							for (l=0;l<conf[j][k].length;l++) {
-								eventIds.push(options.domNodeId+"."+conf[j][k][l]);
-							}
-							this.applyDataBinding({
-								binding:	j,
-								domNode: 	$(bindingContainers[i]),
-								val:		computedValue,
-								eventIds:	eventIds,
-								//eventId:	options.domNodeId+"."+conf[j][k],
-								func:		this.controllerInstance[k],
-								args:		conf[j][k],
-								domData:	options.domData
-							});
-							//$(bindingContainers[i]).html(computedValue);
-						} else {
-							// invalid function call
-							console.log("dataBind() prop ",conf[j],"is a NOT a function: ",k,"(",conf[j][k],")");
-							computedValue = "";
-						}
-					} else {
-						// data-binding value
-						//console.info("##",options.domData, conf[j][k]);
-						computedValue = options.domData[conf[j][k]].data;
-						this.applyDataBinding({
-							binding:	j,
-							domNode: 	$(bindingContainers[i]),
-							val:		computedValue,
-							key:		k,
-							eventId:	options.domNodeId+"."+conf[j][k]
-						});
-					}
-				}
-			} else {
-				//console.info("STRING");
-				// string
-				computedValue = options.domData[conf[j]].data;
-				this.applyDataBinding({
-					binding:	j,
-					domNode: 	$(bindingContainers[i]),
-					val:		computedValue,
-					eventId:	options.domNodeId+"."+conf[j]
-				});
-			}
-		}
+		this.prepareDataBinding(bindingContainers[i], {
+			domData:	options.domData,
+			domNodeId:	options.domNodeId
+		});
 		
 	}
 	
@@ -446,6 +420,98 @@ quantumjs.prototype.dataBind = function(options) {
 	
 	//console.groupEnd();
 	return domNode;
+};
+quantumjs.prototype.prepareDataBinding = function(bindingContainer, options) {
+	var i;
+	var j;
+	var k;
+	var scope = this;
+	//console.log("prepareDataBinding", bindingContainer, options);
+	// make sure the element is not already binded
+	if (scope.contains(bindingContainer, scope.binded)) {
+		return false;
+	}
+	scope.binded.push(bindingContainer);
+	
+	var conf = this.toJSON($(bindingContainer).attr("data-bind"));
+	//console.info("conf",conf, bindingContainer);
+	// 1. compute the value
+	// 2. check which method to apply
+	
+	for (j in conf) {
+		var computedValue = "";
+		if (conf[j] instanceof Object) {
+			for (k in conf[j]) {
+				// if the value is an array, then it's a function call
+				if (conf[j][k] instanceof Array) {
+					if (this.controllerInstance[k] instanceof Function) {
+						// valid function call
+						var args = new Array();
+						for (l=0;l<conf[j][k].length;l++) {
+							args.push(options.domData[conf[j][k][l]].data);
+						}
+						computedValue = this.controllerInstance[k].apply(this, args);
+						// generate event ids based on the arguments
+						// since it's a function, we need to reload if any of the argument changes
+						var eventIds = new Array();
+						for (l=0;l<conf[j][k].length;l++) {
+							eventIds.push(options.domNodeId+"."+conf[j][k][l]);
+						}
+						this.applyDataBinding({
+							binding:	j,
+							domNode: 	$(bindingContainer),
+							val:		computedValue,
+							eventIds:	eventIds,
+							//eventId:	options.domNodeId+"."+conf[j][k],
+							func:		this.controllerInstance[k],
+							args:		conf[j][k],
+							domData:	options.domData
+						});
+						//$(bindingContainers[i]).html(computedValue);
+					} else {
+						// invalid function call
+						console.log("dataBind() prop ",conf[j],"is a NOT a function: ",k,"(",conf[j][k],")");
+						computedValue = "";
+					}
+				} else {
+					// data-binding value
+					//console.info("##",options.domData, conf[j][k]);
+					computedValue = options.domData[conf[j][k]].data;
+					this.applyDataBinding({
+						binding:	j,
+						domNode: 	$(bindingContainer),
+						val:		computedValue,
+						key:		k,
+						eventId:	options.domNodeId+"."+conf[j][k]
+					});
+				}
+			}
+		} else {
+			//console.info("STRING");
+			// string
+			//console.log(j,conf[j]);
+			//console.log("",options.domData);
+			// no domData -> out of a loop
+			if (!options.domData) {
+				computedValue = this.getDataFromPath(conf[j].split("."));
+				this.applyDataBinding({
+					binding:	j,
+					domNode: 	$(bindingContainer),
+					val:		computedValue,
+					eventId:	conf[j]
+				});
+			} else {
+				computedValue = this.getDataFromPath((options.domNodeId+"."+conf[j]).split("."));
+				this.applyDataBinding({
+					binding:	j,
+					domNode: 	$(bindingContainer),
+					val:		computedValue,
+					eventId:	options.domNodeId+"."+conf[j]
+				});
+			}
+			
+		}
+	}
 };
 quantumjs.prototype.applyDataBinding = function(options) {
 	var i;
@@ -524,7 +590,11 @@ quantumjs.prototype.getDataFromPath = function(dataPath) {
 			return false;
 		}
 	}
-	return val.data;
+	if (dataPath.length==1) {
+		return this.controllerInstance;
+	} else {
+		return val.data;
+	}
 };
 quantumjs.prototype.dataPathToDomPath = function(dataPath) {
 	var i;

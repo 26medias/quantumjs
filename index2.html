@@ -1,0 +1,156 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+<head>
+	<title>QuantumJS</title>
+	<meta charset="UTF-8">
+	<script type="text/javascript" src="jquery.min.js"></script>
+	<script type="text/javascript" src="json2.js"></script>
+	<script type="text/javascript" src="Arbiter.js"></script>
+	<script type="text/javascript" src="quantum.js"></script>
+	<script type="text/javascript" src="quantumArray.js"></script>
+	<script type="text/javascript" src="quantumObject.js"></script>
+	<script type="text/javascript" src="quantumString.js"></script>
+	<style type="text/css">
+		ul {
+			padding:0;
+			margin:0;
+			padding-left: 20px;
+		}
+	</style>
+</head>
+<body data-scope="specs">
+	<button data-event="{'click':'editGroupName'}">edit</button>
+	<table>
+		<tbody>
+			<tr>
+				<td valign="top">
+					<button data-event="{'click':'addProject'}">+</button>
+					<ul data-foreach="projects">
+						<li>
+							<span data-bind="{'html':'name'}"></span>
+						</li>
+					</ul>
+				</td>
+				<td valign="top">
+					<button data-event="{'click':'addGroup'}">+</button>
+					<ul data-foreach="groups">
+						<li>
+							<span data-bind="{'html':'name'}"></span> (<span data-bind="{'html':{'getProjectName':['project']}}"></span>)
+							<ul data-foreach="specs">
+								<li>
+									<span data-bind="{'html':'name'}"></span>
+									<div data-bind="{'html':'description'}"></div>
+									<div data-bind="{'html':'level1.level2'}" style="background-color:#ffcc00;"></div>
+									<hr />
+									<ul data-foreach="args">
+										<li>
+											(<span data-bind="{'html':'type'}"></span>) <span data-bind="{'html':'name'}" data-event="{'click':'selectArg'}"></span>
+										</li>
+									</ul>
+								</li>
+							</ul>
+						</li>
+					</ul>
+				</td>
+				<td valign="top">
+					<table>
+						<tbody>
+							<tr>
+								<td>
+									Name
+								</td>
+								<td>
+									<input type="text" data-bind="{'val':'specs.current.name'}" />
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	
+	<script type="text/javascript">
+		console.debug = function(label, data) {
+			console.group(label);
+			if (data instanceof Array) {
+				console.dir(data);
+			} else {
+				for (var i in data) {
+					console.log(i,data[i]);
+				}
+			}
+			console.groupEnd();
+		};
+		
+		var projects 	= [{
+			id:		1,
+			name:	"Project 1"
+		}];
+		var groups 		= [{
+			id:			1,
+			name:		"Group 1",
+			project:	1,
+			specs:		[{
+				name:			"Spec 1",
+				description:	"description 1",
+				level1: {
+					level2: "hello you!"
+				},
+				args: 			[{
+					name:			"arg1",
+					type:			"String"
+				}]
+			}]
+		}];
+		var specsController = function(quantumjs) {
+			this.quantumjs 	= quantumjs;
+			this.counter 	= 3;
+			this.projects 		= new quantumArray(["projects"], this);
+			this.groups 		= new quantumArray(["groups"], this);
+		}
+		specsController.prototype.init = function() {
+			this.projects.load(projects);
+			this.groups.load(groups);
+		};
+		specsController.prototype.addProject = function() {
+			this.projects.push({
+				id:		this.projects.data[this.projects.data.length-1].data["id"].data+1,
+				name:	"New Project"
+			});
+		};
+		specsController.prototype.getProjectName = function(projectId) {
+			return projectId, this.controllerInstance.projects.search({id:projectId}).data["name"].data;
+		};
+		specsController.prototype.selectArg = function(data) {
+			console.log("selectArg",data);
+		};
+		specsController.prototype.editGroupName = function(data) {
+			this.set("specs.groups.0.name","hello world");
+		};
+		specsController.prototype.addGroup = function() {
+			this.groups.push({
+				id:			this.groups.data[this.groups.data.length-1].data["id"].data+1,
+				name:		"New Group",
+				project:	2,
+				specs:		[{
+					name:			"Spec 1",
+					description:	"description 1",
+					level1: {
+						level2: "hello you too!"
+					},
+					args: 			[{
+						name:			"arg1",
+						type:			"String"
+					}]
+				}]
+			});
+		};
+		
+		$(function() {
+			var quantumInterface = new quantumjs(specsController, "specs");
+		});
+		
+	</script>
+</body>
+</html>

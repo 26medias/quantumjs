@@ -1,0 +1,224 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+<head>
+	<title>QuantumJS</title>
+	<meta charset="UTF-8">
+	<script type="text/javascript" src="jquery.min.js"></script>
+	<script type="text/javascript" src="json2.js"></script>
+	<script type="text/javascript" src="Arbiter.js"></script>
+	<script type="text/javascript" src="quantum.js"></script>
+	<script type="text/javascript" src="qengine.js"></script>
+	<script type="text/javascript" src="quantumArray.js"></script>
+	<script type="text/javascript" src="quantumObject.js"></script>
+	<script type="text/javascript" src="quantumString.js"></script>
+	<style type="text/css">
+		ul {
+			padding:0;
+			margin:0;
+			padding-left: 20px;
+		}
+		
+		ul.group li {
+			background-color:		#2d363e;
+			color:					#ffffff;
+			border:					#000000;
+			margin-bottom:			10px;
+			padding:				5px;
+		}
+	</style>
+</head>
+<body data-scope="specs">
+	<table>
+		<tbody>
+			<tr>
+				<td valign="top">
+					<button data-event="{'click':'projects_create'}">+</button>
+					<ul data-foreach="projects">
+						<li>
+							<span data-bind="{'html':'name'}"></span>
+						</li>
+					</ul>
+				</td>
+				<td valign="top">
+					<button data-event="{'click':'addGroup'}">+</button>
+					<ul class="group" data-foreach="groups">
+						<li>
+							<span data-bind="{'html':'name'}"></span>
+							<button data-event="{'click':'groups_specs_create'}">++</button>
+							<ul data-foreach="specs">
+								<li>
+									<span data-bind="{'html':'name'}"></span>
+									<div data-bind="{'html':'description'}"></div>
+									<div data-bind="{'html':'level1.level2'}" style="background-color:#ffcc00;color:#333333;font-weight:bold;text-align:center;padding:3px;"></div>
+									<hr />
+									<button data-event="{'click':'groups_specs_args_create'}">+++</button>
+									<ul data-foreach="args">
+										<li>
+											(<span data-bind="{'html':'type'}"></span>) <span data-bind="{'html':'name'}"></span> <button data-event="{'click':'groups_specs_args_remove'}">x</button>
+										</li>
+									</ul>
+								</li>
+							</ul>
+						</li>
+					</ul>
+				</td>
+				<td valign="top">
+					<table>
+						<tbody>
+							<tr>
+								<td>
+									Name
+								</td>
+								<td>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	
+	<script type="text/javascript">
+		console.debug = function(label, data) {
+			console.group(label);
+			if (data instanceof Array) {
+				console.dir(data);
+			} else {
+				for (var i in data) {
+					console.log(i,data[i]);
+				}
+			}
+			console.groupEnd();
+		};
+		
+		
+		var structure = {
+			 projects:	[{
+				id:		1,
+				name:	"Project Name"
+			}],
+			groups:		 [{
+				id:			1,
+				name:		"Group Name",
+				project:	1,
+				specs:		[{
+					id:				1,
+					name:			"Spec Name",
+					description:	"Spec Description",
+					level1: {
+						level2: "hello level1.level2"
+					},
+					args: 			[{
+						name:			"Arg Name",
+						type:			"Type Name"
+					}]
+				}]
+			}]
+		};
+		var structureOptions = {
+			autoincrements:	[
+				"projects*.id",
+				"groups*.id",
+				"groups*.specs*.id"
+			]
+		};
+		
+		var projects 	= [{
+			id:		1,
+			name:	"Project 1"
+		},{
+			id:		2,
+			name:	"Project 2"
+		}];
+		var groups 		= [{
+			id:			1,
+			name:		"Group 1",
+			project:	1,
+			specs:		[{
+				id:				1,
+				name:			"Spec 1",
+				description:	"description 1",
+				level1: {
+					level2: "hello you!"
+				},
+				args: 			[{
+					name:			"arg1",
+					type:			"String"
+				},{
+					name:			"arg2",
+					type:			"Bool"
+				}]
+			},{
+				id:				2,
+				name:			"Spec 2",
+				description:	"description 2",
+				level1: {
+					level2: "hello you 2!"
+				},
+				args: 			[{
+					name:			"arg1",
+					type:			"String"
+				},{
+					name:			"arg2",
+					type:			"Int"
+				}]
+			}]
+		},{
+			id:			2,
+			name:		"Group 2",
+			project:	2,
+			specs:		[{
+				id:				1,
+				name:			"Spec 2.1",
+				description:	"description 2.1",
+				level1: {
+					level2: "hello you!"
+				},
+				args: 			[{
+					name:			"arg2.1",
+					type:			"String"
+				},{
+					name:			"arg2.2",
+					type:			"Bool"
+				}]
+			},{
+				id:				2,
+				name:			"Spec 2.2",
+				description:	"description 2.2",
+				level1: {
+					level2: "hello you 2.2!"
+				},
+				args: 			[{
+					name:			"arg2.1",
+					type:			"String"
+				},{
+					name:			"arg2.2",
+					type:			"Int"
+				}]
+			}]
+		}];
+		var specsController = function(quantumjs) {
+			this.quantumjs 		= quantumjs;
+		}
+		specsController.prototype.init = function() {
+			this.qengine = new qengine(this, {
+				structure:		structure,
+				options:		structureOptions,
+				data:			{
+					projects:	projects,
+					groups:		groups
+				}
+			});
+		};
+		specsController.prototype.addSpecs = function(data) {
+			console.log("addSpecs()",data);
+		};
+		
+		$(function() {
+			var quantumInterface = new quantumjs(specsController, "specs");
+		});
+		
+	</script>
+</body>
+</html>

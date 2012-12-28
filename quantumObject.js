@@ -27,11 +27,13 @@ quantumObject.prototype.load = function(objectReference) {
 				}
 			break;
 			case "string":
+			case "number":
 				this.set(i, new quantumString(this.extendDataPath(i)).val(item));
 				//this.data[i] = new quantumString(this.extendDataPath(i)).val(item);
 			break;
 			default:
 				// we can only monitor arrays, objects and strings
+				//console.log("OOPS",typeof(item));
 			break;
 		}
 	}
