@@ -118,10 +118,33 @@ qengine.prototype.processNode = function(node, dataPath) {
 				}
 				// _save() method
 				this.controllerInstance[basename+"_create"] = function(data) {
+					//console.log("_create",data);
 					// get parent node
 					var parentNode 	= scope.controllerInstance.quantumjs.getDataFromPath(data.dataPath.split("."));
 					// get current node, on which we need to push
 					var node 		= parentNode[dataPath[dataPath.length-1]];
+					
+					// Do we need an autoincrement?
+					// First, get the oPath (string path, encoding array structure using *: groups*.specs*) which is used to describe which fields are autoincremented
+					var opath		= scope.getOpath(dataPath);
+					// search if we have an autoIncrement value in the options
+					//console.log("opath",opath, scope.data.options.autoincrements);
+					for (j in defaultData) {	// for each field in the default data
+						var isAutoIncrement = scope.str_contains(opath+"."+j, scope.data.options.autoincrements);	// create the oPath for this field and check if it's in the list of autoincremented fields
+						if (isAutoIncrement) {
+							// get the max value
+							var max = 0;
+							for (i=0;i<node.data.length;i++) {
+								if (node.data[i].data[j].data > max) {
+									max = node.data[i].data[j].data;
+								}
+							}
+							//console.log("max >> ",max);
+							defaultData[j] = max+1;	// increment the field in the default data
+						}
+					}
+					
+					//console.log(">",parentNode, node);
 					// push the default data
 					node.push(defaultData);
 					//@todo: manage autoincrements
