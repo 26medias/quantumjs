@@ -52,10 +52,16 @@ quantumArray.prototype.remove = function(idx) {
 	/*window.Arbiter.inform(this.dataPath.join("."), {
 		val:	this.data
 	});*/
+	console.log("remove()",this.dataPath);
 	window.Arbiter.inform(this.dataPath.slice(0,2).join("."), {
-		action:		"update",
+		action:		"remove",
+		index:		idx,
 		dataPath:	this.dataPath
 	});
+	/*window.Arbiter.inform(this.dataPath.slice(0,2).join("."), {
+		action:		"update",
+		dataPath:	this.dataPath
+	});*/
 }
 quantumArray.prototype.extendDataPath = function(item) {
 	var clone = this.dataPath.slice();

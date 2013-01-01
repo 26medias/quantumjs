@@ -22,7 +22,7 @@ var quantumjs = function(controllerPrototype, dataScope) {
 	this.domLoops				= new Array();
 	this.domroot				= $('[data-scope="'+dataScope+'"]');
 	
-	this.domTOC					= new Object();
+	this.domTOC					= new Object();	// associating dataPaths with their correponding DOM elements
 	
 	this.listened				= new Array();	// list of nested nodes. Avoid listening to the same element's events twice or more.
 	this.binded					= new Array();	// list of binded nodes. Avoid binding the same element twice or more.
@@ -147,13 +147,27 @@ quantumjs.prototype.attachEvent = function(domElement, eventType, eventFunction,
 	//console.groupEnd();
 };
 
+quantumjs.prototype.getContextFor = function(el, getPathOnly) {
+	var j;
+	var l = this.domTOC.length;
+	for (j in this.domTOC) {
+		if (el.is(this.domTOC[j])) {
+			if (getPathOnly) {
+				return j;		// if getPathOnly === true, then we only return the string path
+			} else {
+				return this.domTOC[j];	// get the dom element
+			}
+		}
+	}
+};
+
 /*
 * Search for loops and save them in a template Object
 */
 quantumjs.prototype.initTemplate = function(domroot,dataPath) {
 	//console.group("initTemplate()");
 	//console.log(domroot,dataPath);
-	var i;
+	var i,j;
 	var scope = this;
 	
 	if (domroot == undefined) {
@@ -198,7 +212,31 @@ quantumjs.prototype.initTemplate = function(domroot,dataPath) {
 			//console.log("Arbiter",data);
 			switch (data.action) {
 				case "update":
+					//console.log("onDataUpdate",data);
 					scope.onDataUpdate(data);
+				break;
+				case "remove":
+					//console.info("*******************************************************");
+					//console.log("<remove>",data);
+					// getting the loop node
+					var loopContainer 	= $(scope.domTOC[data.dataPath.join(".")]);	// get the loop node
+					var loopChildren 	= loopContainer.children();	// get the childrens
+					var deadNode 		= $(scope.domTOC[data.dataPath.join(".")+"."+data.index]);	// get the node to remove
+					for (j=0;j<loopChildren.length;j++) {
+						delete scope.domTOC[data.dataPath.join(".")+"."+j];	// remove all the children from the TOC
+					}
+					//console.debug("scope.domTOC",scope.domTOC);
+					// remove the DOM node
+					deadNode.remove();
+					// recalculate the domPath/DOM association
+					var loopChildren 	= loopContainer.children();	// get the childrens
+					for (j=0;j<loopChildren.length;j++) {
+						scope.domTOC[data.dataPath.join(".")+"."+j] = $(loopChildren[j]);	// rewrite the TOC
+					}
+					//console.debug("scope.domTOC",scope.domTOC);
+					// recalculate the dataPath from the objects
+					scope.recalculateDataPath(data.dataPath);
+					//console.log("scope.domTOC",scope.domTOC);
 				break;
 				case "val":
 					//scope.onDataUpdate(data);
@@ -223,12 +261,39 @@ quantumjs.prototype.initTemplate = function(domroot,dataPath) {
 	//console.debug("templatesForeach",this.templatesForeach);
 	//console.groupEnd();
 };
+quantumjs.prototype.recalculateDataPath = function(dataPath) {
+	var i, j;
+	//console.log("recalculateDataPath",dataPath);
+	var data = this.getDataFromPath(dataPath);
+	if (data instanceof Array) {
+		//console.log("data is Array",data);
+		for (i=0;i<data.length;i++) {
+			var rdataPath = dataPath.slice();
+			rdataPath.push(i);
+			// fix dataPath
+			data[i].dataPath = rdataPath;
+			// recursive 
+			this.recalculateDataPath(rdataPath);
+		}
+	} else if (typeof data == "object") {
+		//console.log("data is Object",data);
+		for (j in data) {
+			//console.log(">>",j, data[j], data);
+			var rdataPath = dataPath.slice();
+			rdataPath.push(j);
+			data[j].dataPath = rdataPath;
+			this.recalculateDataPath(rdataPath);
+		}
+	}
+	//console.log("data",data);
+};
 quantumjs.prototype.onDataUpdate = function(data) {
 	var i;
 	//console.group("onDataUpdate()");
 	//console.dir(data);
 	// check if the data exists
 	var dataTree = this.getDataFromPath(data.dataPath);
+	//console.log("dataTree",dataTree);
 	//if (data.dataPath) {
 	//	console.log("data",data.dataPath.join("."), dataTree);
 	//}
@@ -240,12 +305,13 @@ quantumjs.prototype.onDataUpdate = function(data) {
 			//console.debug("dataTree", dataTree.slice().length);
 			for (i=0;i<dataTreeLength;i++) {
 				//console.log("i = ",i);
+				//console.log("dataTree[i]",dataTree[i]);
 				var domStrPath 	= this.dataPathToDomPath(dataTree[i].dataPath);	// id of the loop template: tasks
 				var domNodeId	= dataTree[i].dataPath.join(".");				// id of the node itself: tasks.0
 				var domTpl		= this.templatesForeach[domStrPath];
 				var domData		= this.getDataFromPath(dataTree[i].dataPath);
 				//console.log("domTpl", domStrPath);
-				//console.log("this.domTOC[domNodeId]",this.domTOC[domNodeId]);
+				//console.log("this.domTOC["+domNodeId+"]",this.domTOC[domNodeId], dataTree[i]);
 				if (this.domTOC[domNodeId] == undefined) {
 					
 					// create the dom node
@@ -291,7 +357,7 @@ quantumjs.prototype.applyTemplate = function(options) {
 		domRoot = options.domRoot;
 	}
 	
-	//console.log("---domRoot",domRoot);
+	//console.log("---domRoot",domRoot, options);
 	if(options.domRoot == undefined) {
 		//console.info("DomRoot is: ",this.domTOC, options.domNodeId);
 		var domRootId;
@@ -583,6 +649,7 @@ quantumjs.prototype.getComputedValue = function(options) {
 quantumjs.prototype.getDataFromPath = function(dataPath) {
 	var i;	
 	var val = this.controllerInstance[dataPath[1]];
+	//console.log(">>>>val()",val);
 	for (i=2;i<dataPath.length;i++) {
 		if (val.data != undefined && val.data[dataPath[i]] != undefined) {
 			val = val.data[dataPath[i]];

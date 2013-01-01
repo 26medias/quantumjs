@@ -128,17 +128,24 @@ qengine.prototype.processNode = function(node, dataPath) {
 				};
 				// _remove method();
 				this.controllerInstance[basename+"_remove"] = function(data) {
-					var objDataPath = data.dataPath.split(".");
+					//console.log("remove >> ",basename+"_remove", data);
+					//scope.controllerInstance.quantumjs.getContextFor(data.el.parent())
+					//console.log("real Datapath",scope.controllerInstance.quantumjs.getContextFor(data.el.parent(), true).split("."));
+					var objDataPath = scope.controllerInstance.quantumjs.getContextFor(data.el.parent(), true).split(".");
+					//var objDataPath = data.dataPath.split(".");
 					var parentObjDataPath = objDataPath.slice(0, objDataPath.length-2);
-					console.log("dataPaths",objDataPath, parentObjDataPath);
+					//console.log("dataPaths",objDataPath, parentObjDataPath);
 					// get parent node
 					var parentNode 	= scope.controllerInstance.quantumjs.getDataFromPath(parentObjDataPath);
-					console.log("parentNode",parentNode);
+					//console.log("parentNode",parentNode);
 					// get current node, on which we need to push
 					var node 		= parentNode[dataPath[dataPath.length-1]];
-					console.log("node",node);
+					//console.log("node",node);
 					// push the default data
+					//console.log("Remove << ",objDataPath[objDataPath.length-1]);
 					node.remove(objDataPath[objDataPath.length-1]);
+					//node.remove(scope.controllerInstance.quantumjs.getContextFor(data.el.parent(), true).split("."));
+					//console.log("args",scope.controllerInstance.quantumjs.getContextFor(data.el.parent(), true).split("."), objDataPath[objDataPath.length-1]);
 					//@todo: manage autoincrements
 				};
 				//console.log("controllerInstance",this.controllerInstance);

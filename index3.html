@@ -35,7 +35,7 @@
 					<button data-event="{'click':'projects_create'}">+</button>
 					<ul data-foreach="projects">
 						<li>
-							<span data-bind="{'html':'name'}"></span>
+							<span data-bind="{'html':'id'}"></span>. <span data-bind="{'html':'name'}"></span> <button data-event="{'click':'projects_remove'}">x</button>
 						</li>
 					</ul>
 				</td>
@@ -214,9 +214,9 @@
 		specsController.prototype.addSpecs = function(data) {
 			console.log("addSpecs()",data);
 		};
-		
+		var quantumInterface;
 		$(function() {
-			var quantumInterface = new quantumjs(specsController, "specs");
+			quantumInterface = new quantumjs(specsController, "specs");
 		});
 		
 	</script>
