@@ -140,7 +140,21 @@ quantumjs.prototype.attachEvent = function(domElement, eventType, eventFunction,
 		data:		this.controllerInstance
 	});*/
 	$(domElement).bind(eventType, function() {
-		//console.log("[event]",this);
+		//console.log("[event]",this, scope.getContextFor($(this).parent(), true));
+		// scope.getContextFor($(this).parent(), true)
+		//console.log("[event]",{el: $(domElement), dataPath: eventArgs, data:eventArgsObject});
+		
+		// check if parentNode is an array.
+		// If it's an array, then the data and datapath can be wrong if a node has been deleted, so we need to update them
+		// 1. Get parent node
+		var parentNode = scope.getDataFromPath(scope.getParentPath(eventArgs).split("."));
+		// 2. if it's an array, we update the path and the data
+		if (parentNode instanceof Array) {
+			// 3. Update the Path and the data
+			eventArgs 		= scope.getContextFor($(this).parent(), true);	// get string DataPath
+			eventArgsObject	= scope.getDataFromPath(eventArgs.split("."));	// get the data from the dataPath
+			//console.log("[event]",{el: $(domElement), dataPath: eventArgs, data:eventArgsObject});
+		}
 		scope.controllerInstance[eventFunction].apply(scope.controllerInstance, [{el: $(domElement), dataPath: eventArgs, data:eventArgsObject}])
 	});
 	//console.log($(domElement), eventArgs, eventArgsObject);
@@ -336,7 +350,7 @@ quantumjs.prototype.onDataUpdate = function(data) {
 				
 			}
 		} else {
-			console.info("onDataUpdate not an array :(", data, dataTree);
+			//console.info("onDataUpdate not an array :(", data, dataTree);
 		}
 	}
 	//console.groupEnd();
@@ -510,13 +524,27 @@ quantumjs.prototype.prepareDataBinding = function(bindingContainer, options) {
 			for (k in conf[j]) {
 				// if the value is an array, then it's a function call
 				if (conf[j][k] instanceof Array) {
+					//console.log("computed",k, this.controllerInstance[k]);
 					if (this.controllerInstance[k] instanceof Function) {
 						// valid function call
-						var args = new Array();
+						
+						// this was the way I was calling, using an array of argments, but it's not practical to use it that way, since you need to know in advance the position of each argument.
+						/*var args = new Array();
 						for (l=0;l<conf[j][k].length;l++) {
 							args.push(options.domData[conf[j][k][l]].data);
 						}
-						computedValue = this.controllerInstance[k].apply(this, args);
+						console.log("args",args);
+						computedValue = this.controllerInstance[k].apply(this, [args]);*/
+						
+						// New way to call the computed values:
+						// Creating an object, and sending the object
+						var args= {};
+						for (l=0;l<conf[j][k].length;l++) {
+							args[conf[j][k][l]] = options.domData[conf[j][k][l]].data;
+						}
+						//console.log("args",args);
+						computedValue = this.controllerInstance[k].call(this, args);
+						
 						// generate event ids based on the arguments
 						// since it's a function, we need to reload if any of the argument changes
 						var eventIds = new Array();
@@ -639,11 +667,23 @@ quantumjs.prototype.applyDataBinding = function(options) {
 
 quantumjs.prototype.getComputedValue = function(options) {
 	var i;
+	// old way to call, using apply(). Switching to call()
+	/*
 	var args = new Array();
 	for (i=0;i<options.args.length;i++) {
 		args.push(options.domData[options.args[i]].data);
 	}
-	return options.func.apply(this, args);
+	return options.func.apply(this, args);*/
+	// new way to call the computed values, using an object and call()
+	var args = {};
+	for (i=0;i<options.args.length;i++) {
+		//args.push(options.domData[options.args[i]].data);
+		args[options.args[i]] = options.domData[options.args[i]].data;
+	}
+	//console.log(">>>>>>>> args",args);
+	return options.func.call(this, args);
+	//console.log("getComputedValue",args);
+	
 };
 
 quantumjs.prototype.getDataFromPath = function(dataPath) {

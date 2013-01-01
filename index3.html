@@ -35,7 +35,7 @@
 					<button data-event="{'click':'projects_create'}">+</button>
 					<ul data-foreach="projects">
 						<li>
-							<span data-bind="{'html':'id'}"></span>. <span data-bind="{'html':'name'}"></span> <button data-event="{'click':'projects_remove'}">x</button>
+							<span data-bind="{'html':'id'}"></span>. <span data-bind="{'html':'name'}"></span> | <span data-bind="{'html':{'getID':['id','name']}}"></span> <button data-event="{'click':'projects_remove'}">x</button><button data-event="{'click':'editMe'}">e</button>
 						</li>
 					</ul>
 				</td>
@@ -54,7 +54,7 @@
 									<button data-event="{'click':'groups_specs_args_create'}">+++</button>
 									<ul data-foreach="args">
 										<li>
-											(<span data-bind="{'html':'type'}"></span>) <span data-bind="{'html':'name'}"></span> <button data-event="{'click':'groups_specs_args_remove'}">x</button>
+											(<span data-bind="{'html':'type'}"></span>) <span data-bind="{'html':'name'}"></span> <button data-event="{'click':'groups_specs_args_remove'}">x</button><button data-event="{'click':'editSpecsArg'}">e</button>
 										</li>
 									</ul>
 								</li>
@@ -92,7 +92,7 @@
 			console.groupEnd();
 		};
 		
-		
+		// Structure of the data, also exposing the default data to be inserted
 		var structure = {
 			 projects:	[{
 				id:		1,
@@ -116,14 +116,17 @@
 				}]
 			}]
 		};
+		
+		// Options for this structure (so far, only autoincrement values)
 		var structureOptions = {
-			autoincrements:	[
+			autoincrements:	[	// oPath encoding of the fields to be autoincremented
 				"projects*.id",
 				"groups*.id",
 				"groups*.specs*.id"
 			]
 		};
 		
+		// The data to load
 		var projects 	= [{
 			id:		1,
 			name:	"Project 1"
@@ -198,10 +201,13 @@
 				}]
 			}]
 		}];
+		
+		// the Controller
 		var specsController = function(quantumjs) {
 			this.quantumjs 		= quantumjs;
 		}
 		specsController.prototype.init = function() {
+			// Init the QEngine
 			this.qengine = new qengine(this, {
 				structure:		structure,
 				options:		structureOptions,
@@ -211,12 +217,30 @@
 				}
 			});
 		};
-		specsController.prototype.addSpecs = function(data) {
-			console.log("addSpecs()",data);
+		
+		// example of a computed value
+		specsController.prototype.getID = function(data) {
+			//console.log("getID()",data);
+			return data.name+" has ID #"+data.id;
 		};
+		
+		// example of a function call on a click event
+		specsController.prototype.editMe = function(data) {
+			//console.log("editMe", data);
+			data.data.name.val("test_"+data.data.id.val());
+		};
+		
+		// example of a function call on a click event
+		specsController.prototype.editSpecsArg = function(data) {
+			console.log("editSpecsArg", data);
+			data.data.type.val("String");
+			data.data.name.val("hello_"+data.data.type.val());
+		};
+		
+		// init QuantumJS
 		var quantumInterface;
 		$(function() {
-			quantumInterface = new quantumjs(specsController, "specs");
+			quantumInterface = new quantumjs(specsController, "specs");	// "specs" is the scope, defined in the DOM as data-scope="specs". This allows to have more than on instance of QuantumJS on your page, each with its own DOM scope.
 		});
 		
 	</script>

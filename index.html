@@ -39,7 +39,7 @@
 		<tbody data-foreach="tasks">
 			<tr data-bind="{'attr':{'data-id':'name','data-test':'name'}}">
 				<td>
-					<span data-bind="{'html':{'isCompleted':['completed','name']}}"></span>
+					((<span data-bind="{'html':{'isCompleted':['completed','name']}}"></span>))
 				</td>
 				<td>
 					<span data-bind="{'html':'title'}"></span>
@@ -187,6 +187,7 @@
 		}
 		
 		taskController.prototype.isCompleted = function(state, name) {
+			console.log("isCompleted()",state, name);
 			return "["+state+"||"+name+"]";
 		}
 		

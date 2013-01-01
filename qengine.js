@@ -58,6 +58,7 @@ var qengine = function(controllerInstance, data) {
 		this.processNode(this.data.structure[j], [j]);
 	}
 	
+	console.log("QEngine",this);
 };
 /*
 	processNode()
@@ -151,6 +152,7 @@ qengine.prototype.processNode = function(node, dataPath) {
 				};
 				// _remove method();
 				this.controllerInstance[basename+"_remove"] = function(data) {
+					// IMPORTANT NOTE: data.dataPath is not updating correctly, DO  NOT USE. Use quantumjs.getContextFor() instead.
 					//console.log("remove >> ",basename+"_remove", data);
 					//scope.controllerInstance.quantumjs.getContextFor(data.el.parent())
 					//console.log("real Datapath",scope.controllerInstance.quantumjs.getContextFor(data.el.parent(), true).split("."));
