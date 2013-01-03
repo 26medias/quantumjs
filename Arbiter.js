@@ -25,6 +25,7 @@ Arbiter.prototype.unsubscribe = function(token) {
 	return false;
 };
 Arbiter.prototype.inform = function(type, data) {
+	//console.log("- inform",type, data);
 	if (this.events[type] != null) {
 		for (var i=0;i<this.events[type].length;i++) {
 			this.events[type][i].callback(data);

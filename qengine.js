@@ -117,6 +117,9 @@ qengine.prototype.processNode = function(node, dataPath) {
 						defaultData[j] = node[0][j];
 					}
 				}
+				/*
+				*	METHODS
+				*/
 				// _save() method
 				this.controllerInstance[basename+"_create"] = function(data) {
 					//console.log("_create",data);
@@ -173,6 +176,13 @@ qengine.prototype.processNode = function(node, dataPath) {
 					//console.log("args",scope.controllerInstance.quantumjs.getContextFor(data.el.parent(), true).split("."), objDataPath[objDataPath.length-1]);
 					//@todo: manage autoincrements
 				};
+				
+				/*
+				*	BUFFERS
+				*/
+				console.log("_current_"+basename,dataPath);
+				//this.controllerInstance["_current_"+basename] = new quantumArray(dataPath, this.controllerInstance);
+				
 				//console.log("controllerInstance",this.controllerInstance);
 				// search for subnode
 				// process subnode
@@ -180,7 +190,7 @@ qengine.prototype.processNode = function(node, dataPath) {
 					if (node[0][j] instanceof Array) {
 						var newDataPath = dataPath.slice();
 						newDataPath.push(j);
-						this.processNode(node[0][j], newDataPath);	// deactivated during the tests on the first level
+						this.processNode(node[0][j], newDataPath);
 					}
 				}
 			} else {

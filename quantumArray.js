@@ -1,4 +1,5 @@
 var quantumArray = function(dataPath, controllerInstance) {
+	//console.log("quantumArray",dataPath);
 	if (dataPath == undefined) {
 		this.dataPath		= [];
 	} else {

@@ -223,7 +223,7 @@ quantumjs.prototype.initTemplate = function(domroot,dataPath) {
 		// subscribe to events
 		//console.log("subscribe:",this.dataScope+"."+quantumVarName);
 		window.Arbiter.subscribe(this.dataScope+"."+quantumVarName, function(data) {
-			//console.log("Arbiter",data);
+			//console.log("Arbiter("+scope.dataScope+"."+quantumVarName+")",data);
 			switch (data.action) {
 				case "update":
 					//console.log("onDataUpdate",data);
@@ -610,15 +610,24 @@ quantumjs.prototype.prepareDataBinding = function(bindingContainer, options) {
 quantumjs.prototype.applyDataBinding = function(options) {
 	var i;
 	var scope = this;
-	//console.debug("applyDataBinding", options)
+	console.debug("applyDataBinding", options)
 	if (options.eventIds == undefined) {
 		options.eventIds = [options.eventId];
 	}
+	
 	switch (options.binding) {
 		case "html":
 			options.domNode.html(options.val);
 			for (i=0;i<options.eventIds.length;i++) {
-				window.Arbiter.subscribe(options.eventIds[i], function(data) {
+				//console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",options.eventIds[i]);
+				var nodePath = options.eventIds[i];
+				window.Arbiter.subscribe(nodePath, function(data) {
+					//console.log("Arbiter("+nodePath+")",data,options,"<<< ||| >>>");
+					
+					// recalculate the options.domNode and options.domData
+					//options.domNode = scope.domTOC[scope.getParentPath(nodePath)];
+					//options.domData = scope.getDataFromPath(scope.getParentPath(nodePath).split("."));
+					
 					var computedValue = "";
 					if (options.func != undefined) {
 						computedValue = scope.getComputedValue(options);
